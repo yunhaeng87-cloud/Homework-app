@@ -1,13 +1,163 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Homework App v1</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Homework App v2</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f6f7fb}
+*{box-sizing:border-box}body{margin:0}.hidden{display:none!important}
+header{background:#111827;color:#fff;padding:16px 18px;position:sticky;top:0;z-index:5}
+header .bar{max-width:980px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1,h2,h3{margin:0 0 12px}main{max-width:980px;margin:auto;padding:20px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 4px 16px rgba(0,0,0,.04)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+label{font-size:13px;font-weight:700;display:block;margin-bottom:6px}input,textarea,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px;background:#fff}
+textarea{min-height:140px;resize:vertical}button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;font-size:15px;cursor:pointer;background:#2563eb;color:#fff}
+button.secondary{background:#eef2ff;color:#3730a3}button.danger{background:#dc2626}button.ghost{background:#374151}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.muted{color:#6b7280;font-size:14px}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:700}
+.item{border:1px solid #e5e7eb;border-radius:12px;padding:13px;margin:9px 0}.item strong{display:block;margin-bottom:5px}
+.notice{padding:12px;border-radius:10px;background:#ecfdf5;color:#065f46;margin-bottom:14px}.error{background:#fef2f2;color:#991b1b}
+.login{max-width:440px;margin:12vh auto}.small{font-size:12px}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:9px;border-bottom:1px solid #eee;font-size:14px}
+@media(max-width:700px){main{padding:12px}.grid{grid-template-columns:1fr}.card{padding:14px}header{padding:13px}.login{margin:7vh auto}}
+</style>
 </head>
 <body>
-<div id="app"></div>
-<script src="app.js"></script>
-</body>
-</html>
+<header id="header" class="hidden"><div class="bar"><b>📚 Homework</b><div class="row"><span id="who"></span><button class="ghost" onclick="logout()">로그아웃</button></div></div></header>
+<main>
+<section id="loginView" class="card login">
+<h1>📚 Homework</h1><p class="muted">Teacher / Student 로그인</p>
+<div id="loginMsg"></div>
+<label>이메일</label><input id="email" type="email" placeholder="teacher@example.com">
+<label style="margin-top:12px">비밀번호</label><input id="password" type="password" placeholder="••••••••">
+<button style="width:100%;margin-top:16px" onclick="login()">로그인</button>
+<p class="small muted" style="margin-top:12px">Supabase Auth에 등록한 계정을 사용합니다.</p>
+</section>
+
+<section id="teacherView" class="hidden">
+<div class="card"><h2>👨‍🏫 Teacher Dashboard</h2><div id="teacherMsg"></div></div>
+<div class="card">
+<h3>1. Class 등록</h3>
+<div class="grid">
+<div><label>Class name</label><input id="className" placeholder="Class A"></div>
+<div><label>수업 일정</label><input id="scheduleText" placeholder="화 14:00 - 15:00 / 목 14:00 - 15:00"></div>
+</div>
+<p class="small muted">1차 버전에서는 일정 문구를 저장합니다. 다음 버전에서 달력/반복 일정 선택 UI로 고도화합니다.</p>
+<button onclick="createClass()">Class 등록</button>
+</div>
+<div class="card"><h3>2. Class / 학생 배정</h3><div id="teacherClasses"></div></div>
+<div class="card"><h3>3. Homework 등록</h3><div class="grid">
+<div><label>Class</label><select id="hwClass"></select></div>
+<div><label>제목</label><input id="hwTitle" placeholder="Weekend Writing"></div>
+</div>
+<label style="margin-top:12px">과제 안내</label><textarea id="hwInstruction" placeholder="Write 5 English sentences about your weekend."></textarea>
+<label>마감일</label><input id="hwDue" type="date">
+<button onclick="createHomework()">Homework 등록</button></div>
+<div class="card"><h3>4. 학생 제출 결과</h3><div id="submissions"></div></div>
+</section>
+
+<section id="studentView" class="hidden">
+<div class="card"><h2>👨‍🎓 Student Dashboard</h2><div id="studentClass"></div></div>
+<div class="card"><h3>📚 최신 Homework</h3><div id="latestHomework"></div></div>
+<div class="card" id="writingCard"><h3>✍️ Writing</h3><p class="muted">영어 문장을 작성하면 초등학교 고학년 수준의 첨삭을 준비합니다.</p><textarea id="writingText" placeholder="I went to the park with my family."></textarea>
+<button onclick="submitWriting()">Writing 제출</button><div id="writingResult"></div></div>
+<div class="card"><h3>🎙️ Speaking</h3><p class="muted">음성 파일을 선택해 제출합니다. 실제 음성→문법 첨삭은 다음 AI 단계에서 연결합니다.</p>
+<input id="audioFile" type="file" accept="audio/*"><button style="margin-top:10px" onclick="submitSpeaking()">Speaking 제출</button><div id="speakingResult"></div></div>
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+let sb=null,user=null,profile=null,classes=[];
+
+function init(){
+  if(!window.HOMEWORK_CONFIG || HOMEWORK_CONFIG.SUPABASE_URL.includes("YOUR_") || HOMEWORK_CONFIG.SUPABASE_PUBLISHABLE_KEY.includes("YOUR_")){
+    showLoginMsg("config.js에 Supabase URL과 Publishable key를 입력해야 합니다.","error"); return;
+  }
+  sb=supabase.createClient(HOMEWORK_CONFIG.SUPABASE_URL,HOMEWORK_CONFIG.SUPABASE_PUBLISHABLE_KEY);
+  sb.auth.getSession().then(({data})=>{ if(data.session) boot(data.session.user);});
+}
+function show(id){document.querySelectorAll("#loginView,#teacherView,#studentView").forEach(x=>x.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");}
+function showLoginMsg(t,c=""){document.getElementById("loginMsg").innerHTML=`<div class="notice ${c}">${esc(t)}</div>`}
+async function login(){
+  if(!sb)return;
+  const email=document.getElementById("email").value.trim(), password=document.getElementById("password").value;
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error)return showLoginMsg(error.message,"error");
+  boot(data.user);
+}
+async function boot(u){
+  user=u; const {data:p,error}=await sb.from("profiles").select("*").eq("id",u.id).single();
+  if(error||!p){return showLoginMsg("프로필을 찾지 못했습니다. Supabase profiles를 확인해주세요.","error")}
+  profile=p; document.getElementById("header").classList.remove("hidden");document.getElementById("who").textContent=`${p.name} · ${p.role}`;
+  if(p.role==="teacher"){show("teacherView");await loadTeacher()}else{show("studentView");await loadStudent()}
+}
+async function logout(){await sb.auth.signOut();user=null;profile=null;document.getElementById("header").classList.add("hidden");show("loginView")}
+async function loadTeacher(){
+  const r=await sb.from("classes").select("*, class_schedules(*)").order("created_at",{ascending:false}); classes=r.data||[];
+  const s=await sb.from("profiles").select("id,name,role").eq("role","student").order("name");
+  const students=s.data||[];
+  document.getElementById("teacherClasses").innerHTML=classes.length?classes.map(c=>`
+  <div class="item"><strong>${esc(c.name)} <span class="pill">${esc(c.schedule_text||"")}</span></strong>
+  <div class="row"><select id="stu-${c.id}"><option value="">학생 선택</option>${students.map(x=>`<option value="${x.id}">${esc(x.name||"Student")} · ${x.id.slice(0,8)}</option>`).join("")}</select>
+  <button onclick="assignStudent(${c.id})">학생 배정</button><button class="danger" onclick="deleteClass(${c.id})">삭제</button></div>
+  <div id="members-${c.id}" class="muted" style="margin-top:8px">불러오는 중...</div></div>`).join(""):"<p class='muted'>Class가 없습니다.</p>";
+  // schedule_text may not exist in current schema; gracefully show.
+  for(const c of classes) loadMembers(c.id);
+  document.getElementById("hwClass").innerHTML=classes.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  loadSubmissions();
+}
+async function loadMembers(classId){
+ const {data}=await sb.from("class_students").select("student_id, profiles:student_id(name,role)").eq("class_id",classId);
+ const el=document.getElementById("members-"+classId); if(!el)return;
+ el.innerHTML=data?.length?data.map(x=>`👤 ${esc(x.profiles?.name||"Student")} <button class="danger small" onclick="removeStudent(${classId},'${x.student_id}')">해제</button>`).join("<br>"):"배정된 학생 없음";
+}
+async function assignStudent(classId){
+ const id=document.getElementById("stu-"+classId).value;if(!id)return;
+ const {error}=await sb.from("class_students").insert({class_id:classId,student_id:id});
+ if(error)alert(error.message); await loadMembers(classId);
+}
+async function removeStudent(classId,id){await sb.from("class_students").delete().eq("class_id",classId).eq("student_id",id);loadMembers(classId)}
+async function createClass(){
+ const name=document.getElementById("className").value.trim(), schedule=document.getElementById("scheduleText").value.trim();
+ if(!name)return alert("Class name을 입력해주세요.");
+ // The current schema has no schedule_text column. Save class only; schedule is shown locally only.
+ const {data,error}=await sb.from("classes").insert({name,created_by:user.id}).select().single();
+ if(error)return alert(error.message);
+ document.getElementById("className").value="";document.getElementById("scheduleText").value="";
+ alert("Class가 등록됐습니다. 일정은 다음 버전에서 달력 데이터로 연결합니다.");loadTeacher();
+}
+async function deleteClass(id){if(!confirm("Class와 해당 Homework/학생 배정을 삭제할까요?"))return;const {error}=await sb.from("classes").delete().eq("id",id);if(error)alert(error.message);loadTeacher()}
+async function createHomework(){
+ const class_id=+document.getElementById("hwClass").value,title=document.getElementById("hwTitle").value.trim(),instruction=document.getElementById("hwInstruction").value.trim(),due_date=document.getElementById("hwDue").value||null;
+ if(!class_id||!title||!instruction)return alert("Class, 제목, 과제 안내를 입력해주세요.");
+ const {error}=await sb.from("homeworks").insert({class_id,title,instruction,due_date});
+ if(error)alert(error.message);else{alert("Homework가 등록됐습니다.");document.getElementById("hwTitle").value="";document.getElementById("hwInstruction").value="";loadSubmissions()}
+}
+async function loadSubmissions(){
+ const {data,error}=await sb.from("submissions").select("id,type,original_text,corrected_text,ai_feedback,transcript,submitted_at,student_id,homeworks(title,classes(name))").order("submitted_at",{ascending:false});
+ document.getElementById("submissions").innerHTML=error?`<div class="notice error">${esc(error.message)}</div>`:data?.length?data.map(s=>`<div class="item"><strong>${esc(s.homeworks?.classes?.name||"Class")} · ${esc(s.homeworks?.title||"Homework")} · ${esc(s.type)}</strong><div class="muted">학생 ${s.student_id.slice(0,8)} · ${new Date(s.submitted_at).toLocaleString()}</div><p>${esc(s.original_text||s.transcript||"(음성 파일)")}</p><p><b>AI 첨삭</b><br>${esc(s.corrected_text||s.ai_feedback||"AI 연결 전입니다.")}</p></div>`).join(""):"<p class='muted'>제출물이 없습니다.</p>";
+}
+async function loadStudent(){
+ const {data:members}=await sb.from("class_students").select("class_id,classes(id,name)").eq("student_id",user.id);
+ if(!members?.length){document.getElementById("studentClass").innerHTML="<p class='muted'>배정된 Class가 없습니다.</p>";document.getElementById("latestHomework").innerHTML="<p class='muted'>Homework가 없습니다.</p>";return}
+ document.getElementById("studentClass").innerHTML=members.map(m=>`<span class="pill">${esc(m.classes.name)}</span>`).join(" ");
+ const ids=members.map(m=>m.class_id);
+ const {data:hw}=await sb.from("homeworks").select("*,classes(name)").in("class_id",ids).order("created_at",{ascending:false}).limit(1);
+ const h=hw?.[0];window.currentHomework=h;
+ document.getElementById("latestHomework").innerHTML=h?`<div class="item"><strong>${esc(h.title)}</strong><div>${esc(h.instruction)}</div><p class="muted">${h.classes?.name||""} ${h.due_date?`· 마감 ${h.due_date}`:""}</p></div>`:"<p class='muted'>등록된 Homework가 없습니다.</p>";
+}
+async function submitWriting(){
+ const text=document.getElementById("writingText").value.trim();if(!text)return alert("문장을 입력해주세요.");if(!window.currentHomework)return alert("먼저 Homework가 등록되어야 합니다.");
+ const {error}=await sb.from("submissions").insert({homework_id:window.currentHomework.id,student_id:user.id,type:"writing",original_text:text});
+ document.getElementById("writingResult").innerHTML=error?`<div class="notice error">${esc(error.message)}</div>`:"<div class='notice'>제출 완료! AI 첨삭 연결 후 결과가 이곳에 표시됩니다.</div>";
+}
+async function submitSpeaking(){
+ const f=document.getElementById("audioFile").files[0];if(!f)return alert("음성 파일을 선택해주세요.");if(!window.currentHomework)return alert("먼저 Homework가 등록되어야 합니다.");
+ const {error}=await sb.from("submissions").insert({homework_id:window.currentHomework.id,student_id:user.id,type:"speaking",audio_path:f.name});
+ document.getElementById("speakingResult").innerHTML=error?`<div class="notice error">${esc(error.message)}</div>`:"<div class='notice'>제출 기록이 저장됐습니다. 실제 파일 업로드/음성 인식은 다음 단계에서 Storage와 AI를 연결합니다.</div>";
+}
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+init();
+</script>
+</body></html>
