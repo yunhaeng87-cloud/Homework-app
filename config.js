@@ -4,5 +4,5 @@
 // service_role/secret key는 절대 넣지 마세요.
 const HOMEWORK_CONFIG = {
   SUPABASE_URL: "https://eapmavlgpbzqpdyxkjew.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "YOUR_SUPABASE_PUBLISHABLE_KEY"
+  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_pI2xawcT8dV--LdJs5gZ_g_qaP1rh16"
 };
